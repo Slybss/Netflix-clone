@@ -1,4 +1,4 @@
-name: Build,Analyze,scan
+name: Build, Analyze, Scan
 
 on:
   push:
@@ -7,12 +7,12 @@ on:
 
 jobs:
   build-analyze-scan:
-    name: Build
+    name: Build, Analyze, Scan
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
         with:
-          fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
+          fetch-depth: 0  # Shallow clones should be disabled for better relevancy of analysis
 
       - uses: sonarsource/sonarqube-scan-action@master
         env:
@@ -25,18 +25,22 @@ jobs:
       #   env:
       #     SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
-      - name: install trivy
+      - name: Install Trivy
         run: |
           # Install Trivy
+          sudo apt-get update
           sudo apt-get install wget apt-transport-https gnupg lsb-release -y
           wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | gpg --dearmor | sudo tee /usr/share/keyrings/trivy.gpg > /dev/null
-          echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main" | sudo tee -a /etc/apt/sources.list.d/trivy.list
+          echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main" | sudo tee /etc/apt/sources.list.d/trivy.list
           sudo apt-get update
           sudo apt-get install trivy -y
+
+      - name: Run Trivy File System Scan
+        run: |
           # Command to scan files
           trivy fs .
 
-      - name: Docker build and push
+      - name: Docker Build and Push
         run: |
           # Run commands to build and push Docker images
           docker build --build-arg TMDB_V3_API_KEY=42da02939c4a9a3e8abec4a20cb82385 -t netflix .
@@ -50,9 +54,21 @@ jobs:
     needs: build-analyze-scan
     runs-on: ubuntu-latest
     steps:
-      - name: Pull the docker image
+      - name: Pull the Docker Image
         run: docker pull sylvudeb/netflix:latest
-      - name: Trivy image scan
+
+      - name: Install Trivy
+        run: |
+          # Install Trivy
+          sudo apt-get update
+          sudo apt-get install wget apt-transport-https gnupg lsb-release -y
+          wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | gpg --dearmor | sudo tee /usr/share/keyrings/trivy.gpg > /dev/null
+          echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main" | sudo tee /etc/apt/sources.list.d/trivy.list
+          sudo apt-get update
+          sudo apt-get install trivy -y
+
+      - name: Trivy Image Scan
         run: trivy image sylvudeb/netflix:latest
-      - name: Run the container netflix
+
+      - name: Run the Container
         run: docker run -d --name netflix -p 8081:80 sylvudeb/netflix:latest
