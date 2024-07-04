@@ -52,7 +52,7 @@ jobs:
 
   deploy:
     needs: build-analyze-scan
-    runs-on: ubuntu-latest
+    runs-on: netflix-run
     steps:
       - name: Pull the Docker Image
         run: docker pull sylvudeb/netflix:latest
