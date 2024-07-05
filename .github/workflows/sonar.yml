@@ -39,3 +39,25 @@ jobs:
           docker push slybss/netflix:latest
         env:
           DOCKER_CLI_ACI: 1
+
+  deploy:
+    needs: build-analyze-scan
+    runs-on: netflix-run
+    steps:
+      - name: Pull the Docker Image
+        run: docker pull slybss/netflix:latest
+
+      - name: Install Trivy
+        run: |
+          sudo apt-get update
+          sudo apt-get install wget apt-transport-https gnupg lsb-release -y
+          wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | gpg --dearmor | sudo tee /usr/share/keyrings/trivy.gpg > /dev/null
+          echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main" | sudo tee /etc/apt/sources.list.d/trivy.list
+          sudo apt-get update
+          sudo apt-get install trivy -y
+
+      - name: Trivy Image Scan
+        run: trivy image slybss/netflix:latest
+
+      - name: Run the Container
+        run: docker run -d --name netflix -p 8081:80 slybss/netflix:latest
